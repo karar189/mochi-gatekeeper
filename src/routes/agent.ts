@@ -21,6 +21,13 @@ export function createAgentRouter(cfg: Config, store: SeenStore): Router {
   const router = Router();
   const prover = new Prover(cfg.circuitsDir);
 
+  // Fire-and-forget warmup; first competition task should not pay cold start.
+  void prover.warmup().then(
+    () => console.log("[agent] prover warmed"),
+    (err) =>
+      console.error("[agent] prover warmup failed:", (err as Error).message),
+  );
+
   router.get(["/agent", "/health", "/"], (_req, res) => {
     res.status(200).json({ ok: true, protocolVersion: PROTOCOL_VERSION });
   });

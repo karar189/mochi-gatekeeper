@@ -247,6 +247,20 @@ async function main(): Promise<void> {
     true,
   );
 
+  // Both VK fields swapped to the same fake hash — reject, no honest proof.
+  const fakeVk =
+    "0x2222222222222222222222222222222222222222222222222222222222222222";
+  await expectTask(
+    "VK_SUBSTITUTION (both fields)",
+    makeTask("gk_vk_both", {
+      registered_vk: fakeVk,
+      proof_vk: fakeVk,
+    }),
+    "REJECT",
+    "VK_SUBSTITUTION",
+    false,
+  );
+
   const reuseTx = tx("reuse-shared");
   await expectTask(
     "first use (setup for reuse)",

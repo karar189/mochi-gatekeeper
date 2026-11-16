@@ -71,6 +71,25 @@ export class SeenStore {
       this.persist();
     }
   }
+
+  /** Single disk write for proof_tx + cached response (hot path). */
+  recordOutcome(
+    proofTx: string,
+    taskId: string,
+    serializedResponse: string,
+  ): void {
+    let dirty = false;
+    const key = normalizeTx(proofTx);
+    if (key && !this.seenProofTx.has(key)) {
+      this.seenProofTx.add(key);
+      dirty = true;
+    }
+    if (taskId && !this.responseByTaskId.has(taskId)) {
+      this.responseByTaskId.set(taskId, serializedResponse);
+      dirty = true;
+    }
+    if (dirty) this.persist();
+  }
 }
 
 export function normalizeTx(tx: string): string {

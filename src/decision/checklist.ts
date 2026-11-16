@@ -14,7 +14,9 @@ import type {
  */
 
 function normalizeHex(v: string): string {
-  return (v ?? "").trim().toLowerCase();
+  let s = (v ?? "").trim().toLowerCase();
+  if (s.startsWith("0x")) s = s.slice(2);
+  return s;
 }
 
 export function parseUint(v: unknown): bigint | null {
@@ -92,9 +94,25 @@ export function parseInput(input: GatekeeperInput | undefined): ParsedInput | nu
 export function evaluate(
   parsed: ParsedInput,
   isProofTxSeen: (proofTx: string) => boolean,
+  expectedVkHash?: string,
 ): Evaluation {
-  if (normalizeHex(parsed.proofVk) !== normalizeHex(parsed.registeredVk)) {
+  const registered = normalizeHex(parsed.registeredVk);
+  const proofVk = normalizeHex(parsed.proofVk);
+  // Classic trap: proof VK swapped relative to the condition's registered VK.
+  if (proofVk !== registered) {
     return { decision: "REJECT", reason_code: "VK_SUBSTITUTION", provable: true };
+  }
+  // Both fields replaced with the same fake hash: circuit would require APPROVE
+  // on these inputs, so we reject without a proof (cannot honestly prove REJECT).
+  if (expectedVkHash) {
+    const expected = normalizeHex(expectedVkHash);
+    if (registered !== expected || proofVk !== expected) {
+      return {
+        decision: "REJECT",
+        reason_code: "VK_SUBSTITUTION",
+        provable: false,
+      };
+    }
   }
   if (isProofTxSeen(parsed.proofTx)) {
     return { decision: "REJECT", reason_code: "PROOF_REUSED", provable: false };

@@ -4,7 +4,8 @@ import type { Groth16Proof } from "../types.js";
 /**
  * Kurier REST submission for optional on-chain audit.
  * Platform scoring re-verifies the Groth16 proof offline — Kurier is best-effort.
- * Returns as soon as a txHash appears (or budget expires); never throws.
+ * Returns as soon as a txHash appears (or budget expires); never blocks APPROVE.
+ * Never throws.
  */
 export interface KurierOutcome {
   jobId: string;

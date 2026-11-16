@@ -10,9 +10,15 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=1536"
       - key: AGENT_GAMES_HMAC_SECRET
         sync: false
       - key: KURIER_API_KEY
         sync: false
       - key: REGISTERED_VK_HASH
         value: "0x6b79c6012a6d8651f3e13bc4d2a20370280ab49700c90c5316d4168bfbad77b0"
+      - key: KURIER_POLL_BUDGET_MS
+        value: "8000"
+      - key: TASK_SOFT_DEADLINE_MS
+        value: "45000"

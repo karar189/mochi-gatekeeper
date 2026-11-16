@@ -10,6 +10,9 @@ import type { SeenStore } from "../store/seen.js";
 import type { TaskEnvelope, TaskResponse } from "../types.js";
 import { submitProofAndPoll } from "../zkverify/kurier.js";
 
+/** Don't start Kurier if less than this remains before our soft deadline. */
+const KURIER_MIN_REMAINING_MS = 6_000;
+
 export async function handleGatekeeperTask(
   cfg: Config,
   store: SeenStore,
@@ -39,13 +42,31 @@ export async function handleGatekeeperTask(
     return { decision: "REJECT", reason_code: "INVALID_TASK" };
   }
 
-  const evaluation = evaluate(parsed, (tx) => store.hasProofTx(tx));
+  const evaluation = evaluate(
+    parsed,
+    (tx) => store.hasProofTx(tx),
+    cfg.registeredVkHash,
+  );
   const response: TaskResponse = {
     decision: evaluation.decision,
     reason_code: evaluation.reason_code,
   };
 
   if (evaluation.provable) {
+    // If the hard deadline is nearly gone, fail closed before expensive prove.
+    const hardLeft =
+      deadlineMs !== null ? deadlineMs - Date.now() : cfg.taskSoftDeadlineMs;
+    if (hardLeft < 3_000) {
+      return {
+        decision: "REJECT",
+        reason_code:
+          evaluation.decision === "APPROVE"
+            ? "INVALID_TASK"
+            : evaluation.reason_code,
+        proof_tx: parsed.proofTx,
+      };
+    }
+
     const salt = deriveSalt(cfg.hmacSecret, task.task_id);
     const circuitInputs = buildCircuitInputs(
       task,
@@ -58,10 +79,24 @@ export async function handleGatekeeperTask(
       response.proof = proof;
       response.public_signals = publicSignals;
 
-      const remaining = cfg.taskSoftDeadlineMs - (Date.now() - startedAt);
-      const budget = Math.min(cfg.kurierPollBudgetMs, Math.max(0, remaining));
-      const kurier = await submitProofAndPoll(cfg, proof, publicSignals, budget);
-      response.proof_tx = kurier?.txHash ? kurier.txHash : parsed.proofTx;
+      // Platform re-verifies Groth16 offline; Kurier is optional audit pointer.
+      // Prefer returning a valid proof in time over waiting for Finalized.
+      const softLeft = cfg.taskSoftDeadlineMs - (Date.now() - startedAt);
+      const hardRemaining =
+        deadlineMs !== null ? deadlineMs - Date.now() : softLeft;
+      const remaining = Math.min(softLeft, hardRemaining);
+      if (remaining >= KURIER_MIN_REMAINING_MS) {
+        const budget = Math.min(cfg.kurierPollBudgetMs, remaining - 2_000);
+        const kurier = await submitProofAndPoll(
+          cfg,
+          proof,
+          publicSignals,
+          Math.max(0, budget),
+        );
+        response.proof_tx = kurier?.txHash ? kurier.txHash : parsed.proofTx;
+      } else {
+        response.proof_tx = parsed.proofTx;
+      }
     } catch (err) {
       console.error("[agent] proof generation failed:", (err as Error).message);
       return {
@@ -77,8 +112,7 @@ export async function handleGatekeeperTask(
     response.proof_tx = parsed.proofTx;
   }
 
-  store.recordProofTx(parsed.proofTx);
-  store.recordResponse(task.task_id, JSON.stringify(response));
+  store.recordOutcome(parsed.proofTx, task.task_id, JSON.stringify(response));
   return response;
 }
 
