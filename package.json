@@ -1,0 +1,39 @@
+{
+  "name": "mochi-gatekeeper",
+  "version": "1.0.0",
+  "description": "Proof Gatekeeper agent for zkVerify Agent Games — HMAC endpoint, deterministic policy, local Groth16 proofs, Kurier submission.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "download:circuits": "tsx scripts/download-circuits.ts",
+    "test:harness": "tsx scripts/local-harness.ts",
+    "test": "tsx scripts/local-harness.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github-personal:karar189/mochi-gatekeeper.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "snarkjs": "^0.7.6",
+    "uuid": "^11.1.0",
+    "viem": "^2.30.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.10",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

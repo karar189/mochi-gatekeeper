@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: mochi-gatekeeper
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: AGENT_GAMES_HMAC_SECRET
+        sync: false
+      - key: KURIER_API_KEY
+        sync: false
+      - key: REGISTERED_VK_HASH
+        value: "0x6b79c6012a6d8651f3e13bc4d2a20370280ab49700c90c5316d4168bfbad77b0"
